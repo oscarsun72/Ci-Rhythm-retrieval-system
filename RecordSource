@@ -38,10 +38,11 @@ f = Forms("歷代詞作韻律資料庫檢索表單").fFullName.ControlSource
 If InStr(f, ":\") Then
     fFullName = f
 Else
-    fFullName = CurrentProject.Path & f  'CurrentProject.Path & "\@@詞學韻律資料庫設計用20170721.xlsm
+    fFullName = CurrentProject.Path & "\" & f  'CurrentProject.Path & "\@@詞學韻律資料庫設計用20170721.xlsm
 End If
 If Dir(fFullName) = "" Then
     MsgBox "找不到來源來檔" & vbCr & vbCr & "**詞學韻律資料庫**.xlsm", vbExclamation
+    End
 End If
 End Property
 
