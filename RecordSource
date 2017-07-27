@@ -6,198 +6,69 @@ Attribute VB_Name = "RecordSource"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 Option Compare Database
 Option Explicit
-'Enum Fields
-'    頁碼 = "000頁碼"
-'    作者 = "0作者"
-'    詞牌 = "0詞牌"
-'    首句 = "0首句"
-'    韻法 = "韻法"
-'    調式 = "0調  式"
-'    字數 = "000字 數"
-'    韻字 = "0韻    字"
-'    協韻方式 = "協韻方式"
-'    聲調 = "聲調"
-'    韻部 = "韻部"
-'    韻數 = "000韻數"
-'    備註 = "備註"
-'    已發現錯誤 = "已發現錯誤"
-'    入聲韻 = "入聲韻"
-'End Enum
-    Dim WhereCl As New WhereClause, frm As Form, fldShow As String, f As adodb.Field, i As Byte
-    Dim cnt As New adodb.Connection
-    Dim rst As New adodb.Recordset 'http://bit.ly/2uc7yGe
-    Dim xlApp As Excel.Application, xlBook As Excel.Workbook, xlSheet As Excel.Worksheet, xlsp As String
+
+Dim cnt As New ADODB.Connection, rst As New ADODB.Recordset 'http://bit.ly/2uc7yGe
+Dim whereClause As New WhereClauses, fldShow As String ', frm As Form ', f As adodb.Field ', i As Byte 'fld：field
+Dim excel_layout As New ExcelLayout
     
-Property Get fFullName() As String
-'Get the current file name
-Dim f As String
-f = Forms("歷代詞作韻律資料庫檢索表單").fFullName.ControlSource
-If InStr(f, ":\") Then
-    fFullName = f
+Enum excelFields_RecordSource ' excel 原檔（資料來源 record source）欄位順序，記下以備用
+    流水號 = 1
+    書名 = 2
+    頁碼 = 3
+    作者 = 4
+    詞牌 = 5
+    首句 = 6
+    韻法 = 7
+    調式 = 8
+    字數 = 9
+    韻字 = 10
+    協韻方式 = 11
+    入聲韻 = 12
+    聲調 = 13
+    韻部 = 14
+    韻數 = 15
+    備註 = 16
+    已發現錯誤 = 17
+    舊序號 = 18
+End Enum
+
+Property Get fFullName() As String 'Get the current excel file name
+Dim flName As String
+flName = Forms("歷代詞作韻律資料庫檢索表單").fFullName.ControlSource
+If InStr(flName, ":\") Then
+    fFullName = flName
 Else
-    fFullName = CurrentProject.Path & "\" & f  'CurrentProject.Path & "\@@詞學韻律資料庫設計用20170721.xlsm
+    fFullName = CurrentProject.Path & "\" & flName   'CurrentProject.Path & "\@@詞學韻律資料庫設計用20170721.xlsm
 End If
+If InStrRev(fFullName, ".") = 0 Then fFullName = fFullName & ".xlsm"   '如果沒有副檔名
 If Dir(fFullName) = "" Then
     MsgBox "找不到來源來檔" & vbCr & vbCr & "**詞學韻律資料庫**.xlsm", vbExclamation
     End
 End If
 End Property
 
-
-Function connetRecordSource(fldname As String, v As String) 'fldname=field's name
+Function connetRecordSourceValuesArray(fldName As String, v() As String, AndOr_TrueisAnd As Boolean) 'fldname=field's name '單一欄位多個值
     
     On Error GoTo errh:
-    cnt.Open "Provider=Microsoft.ACE.OLEDB.12.0;" & _
+'    cnt.Open "Provider=Microsoft.ACE.OLEDB.12.0;" & _
                 "Data Source=" & fFullName & ";" & _
                     "Extended Properties=""Excel 8.0;HDR=Yes;"";" '如今 要用「Microsoft.ACE.OLEDB.12.0」取代「Microsoft.Jet.OLEDB.4.0」才能取得完整的記錄錄集（recordset）
-    Select Case fldname
+    Select Case fldName
         Case "調式", "作者", "韻字"
             fldShow = "流水號,書名,頁碼,作者,詞牌,首句,調式,字數,韻字,韻數"
     
         Case Else
-            fldShow = "*" 'rst.Open "select * from [工作表1$] " & WhereCl.WhereCl(fldname, v), cnt, adOpenKeyset, adLockOptimistic, 1
+            fldShow = "*" 'rst.Open "select * from [工作表1$] " ...
     End Select
-    rst.Open "select " & fldShow & " from [工作表1$] " & WhereCl.WhereCl(fldname, v), cnt, adOpenKeyset, adLockOptimistic, 1
+    rst.Open "select " & fldShow & " from [工作表1$] " & whereClause.WhereCl_1FarrayV(fldName, v, AndOr_TrueisAnd), cnt, adOpenKeyset, adLockOptimistic, 1
     
-    '''MsgBox rst.Fields(1).Value & vbCr & vbCr & rst.RecordCount
-    '''rst.MoveLast
-    ''Set frm = CreateForm(, "Customers")
-    '''MsgBox rst.Fields(1).Value & vbCr & vbCr & rst.RecordCount
-    ''MsgBox rst.GetString
-    '
-    '
-    '    ' Create form based on Customers form.
-    ''Set newQueryDef = CurrentDb.CreateQueryDef("詞學韻律資料庫設計viewTest", "")
-    '
-    ''    Set frm = CreateForm(, "Customers")
-    ''    DoCmd.Restore
-    ''    ' Set RecordSource property to Customers table.
-    '    'frm.RecordSource = "詞學韻律資料庫設計用"
-    '    'CreateControl frm.Name, acSubform, acDetail
-    '
-    ''CurrentProject.AllForms("FormTest").Form.Recordset = rst
-    ''Set Forms("FormTest").Form.Recordset = rst
-    
-    'DoCmd.OpenForm "FormTest", acFormDS, , , , acHidden
-    
-    
-    Set xlApp = CreateObject("Excel.Application")
-    Set xlBook = xlApp.Workbooks.Add
-    Set xlSheet = xlBook.Worksheets(1)
-    i = 0
-    For Each f In rst.Fields '設定欄名
-        i = i + 1
-        xlSheet.Cells(1, i) = f.Name
-'        xlSheet.Cells(1, i).Select
-        'With Range(Cells(1, 1), Cells(1, i)).Interior '設定欄名格式
-        With xlSheet.Cells(1, i).Interior
-            .Pattern = xlSolid
-            .PatternColorIndex = xlAutomatic
-            .Color = 35535
-            .TintAndShade = 0
-            .PatternTintAndShade = 0
-        End With
-    Next
-'    Range(Cells(1, 1), Cells(1, i)).Select
-        
-    xlSheet.Range("A2").CopyFromRecordset rst
-    xlSheet.Cells.EntireColumn.AutoFit '最適欄寬
-    xlSheet.Application.Visible = True
-    xlSheet.Application.UserControl = True
-    xlsp = GetDeskDir & "\"
-    xlsp = xlsp & CurrentProject.Name & VBA.Replace(VBA.Replace(VBA.Replace(VBA.Date & VBA.Time, ":", ""), "/", ""), " ", "") & ".xlsx"
-    xlSheet.SaveAs xlsp
-    xlSheet.Activate: xlBook.Activate
-    xlSheet.Range("A2").Select
-    xlApp.ActiveWindow.FreezePanes = True '凍結窗格（欄名）
-    
+    excel_layout.FieldNameRow_FreezeWindow rst
+
     rst.Close:    cnt.Close
-    Set rst = Nothing:    Set cnt = Nothing:    Set xlSheet = Nothing:    Set xlBook = Nothing: Set xlApp = Nothing
-Exit Function
-
-
-errh:
-    Select Case Err.Number
-        Case Else
-            MsgBox Err.Number & Err.Description
-            Resume
-'        End
-    End Select
-End Function
-
-
-Function connetRecordSourceValuesArray(fldname As String, v() As String, AndOr As Boolean) 'fldname=field's name
-    
-    On Error GoTo errh:
-    cnt.Open "Provider=Microsoft.ACE.OLEDB.12.0;" & _
-                "Data Source=" & fFullName & ";" & _
-                    "Extended Properties=""Excel 8.0;HDR=Yes;"";" '如今 要用「Microsoft.ACE.OLEDB.12.0」取代「Microsoft.Jet.OLEDB.4.0」才能取得完整的記錄錄集（recordset）
-    Select Case fldname
-        Case "調式", "作者", "韻字"
-            fldShow = "流水號,書名,頁碼,作者,詞牌,首句,調式,字數,韻字,韻數"
-    
-        Case Else
-            fldShow = "*" 'rst.Open "select * from [工作表1$] " & WhereCl.WhereCl(fldname, v), cnt, adOpenKeyset, adLockOptimistic, 1
-    End Select
-    rst.Open "select " & fldShow & " from [工作表1$] " & WhereCl.WhereClArray(fldname, v, AndOr), cnt, adOpenKeyset, adLockOptimistic, 1
-    
-    '''MsgBox rst.Fields(1).Value & vbCr & vbCr & rst.RecordCount
-    '''rst.MoveLast
-    ''Set frm = CreateForm(, "Customers")
-    '''MsgBox rst.Fields(1).Value & vbCr & vbCr & rst.RecordCount
-    ''MsgBox rst.GetString
-    '
-    '
-    '    ' Create form based on Customers form.
-    ''Set newQueryDef = CurrentDb.CreateQueryDef("詞學韻律資料庫設計viewTest", "")
-    '
-    ''    Set frm = CreateForm(, "Customers")
-    ''    DoCmd.Restore
-    ''    ' Set RecordSource property to Customers table.
-    '    'frm.RecordSource = "詞學韻律資料庫設計用"
-    '    'CreateControl frm.Name, acSubform, acDetail
-    '
-    ''CurrentProject.AllForms("FormTest").Form.Recordset = rst
-    ''Set Forms("FormTest").Form.Recordset = rst
-    
-    'DoCmd.OpenForm "FormTest", acFormDS, , , , acHidden
-    
-    
-    Set xlApp = CreateObject("Excel.Application")
-    Set xlBook = xlApp.Workbooks.Add
-    Set xlSheet = xlBook.Worksheets(1)
-    i = 0
-    For Each f In rst.Fields '設定欄名
-        i = i + 1
-        xlSheet.Cells(1, i) = f.Name
-'        xlSheet.Cells(1, i).Select
-        'With Range(Cells(1, 1), Cells(1, i)).Interior '設定欄名格式
-        With xlSheet.Cells(1, i).Interior
-            .Pattern = xlSolid
-            .PatternColorIndex = xlAutomatic
-            .Color = 35535
-            .TintAndShade = 0
-            .PatternTintAndShade = 0
-        End With
-    Next
-'    Range(Cells(1, 1), Cells(1, i)).Select
-        
-    xlSheet.Range("A2").CopyFromRecordset rst
-    xlSheet.Cells.EntireColumn.AutoFit '最適欄寬
-    xlSheet.Application.Visible = True
-    xlSheet.Application.UserControl = True
-    xlsp = GetDeskDir & "\"
-    xlsp = xlsp & CurrentProject.Name & VBA.Replace(VBA.Replace(VBA.Replace(VBA.Date & VBA.Time, ":", ""), "/", ""), " ", "") & ".xlsx"
-    xlSheet.SaveAs xlsp
-    xlSheet.Activate: xlBook.Activate
-    xlSheet.Range("A2").Select
-    xlApp.ActiveWindow.FreezePanes = True '凍結窗格（欄名）
-    
-    rst.Close:    cnt.Close
-    Set rst = Nothing:    Set cnt = Nothing:    Set xlSheet = Nothing:    Set xlBook = Nothing: Set xlApp = Nothing
+    Set rst = Nothing:    Set cnt = Nothing
 Exit Function
 
 
@@ -210,3 +81,60 @@ errh:
     End Select
 End Function
 
+Function connetRecordSourceResult(fldName() As String, v() As String, AndOr_TrueisAnd As Boolean) 'fldname=field's name '單一欄位多個值
+    
+    On Error GoTo errh:
+'    cnt.Open "Provider=Microsoft.ACE.OLEDB.12.0;" & _
+                "Data Source=" & fFullName & ";" & _
+                    "Extended Properties=""Excel 8.0;HDR=Yes;"";" '如今 要用「Microsoft.ACE.OLEDB.12.0」取代「Microsoft.Jet.OLEDB.4.0」才能取得完整的記錄錄集（recordset）
+    
+    fldShow = "流水號,書名,頁碼,作者,詞牌,首句,調式,字數,韻字,韻數"
+    
+    rst.Open "select " & fldShow & " from [工作表1$] " & whereClause.WhereCl_MultFldVals_Instr(fldName, v, AndOr_TrueisAnd), cnt, adOpenKeyset, adLockOptimistic, 1
+    
+    excel_layout.FieldNameRow_FreezeWindow rst
+
+    rst.Close:    cnt.Close
+    Set rst = Nothing:    Set cnt = Nothing
+Exit Function
+
+
+errh:
+    Select Case Err.Number
+        Case Else
+            MsgBox Err.Number & Err.Description
+'            Resume
+'        End
+    End Select
+End Function
+
+
+Function connetRecordSource_WhereClause(whereClause) ' where 子句（條件句）作參數
+    
+    On Error GoTo errh:
+    fldShow = "流水號,書名,頁碼,作者,詞牌,首句,調式,字數,韻字,韻數"
+
+    rst.Open "select " & fldShow & " from [工作表1$] " & whereClause, cnt, adOpenKeyset, adLockOptimistic, 1
+    
+    excel_layout.FieldNameRow_FreezeWindow rst
+
+    rst.Close:    cnt.Close
+    Set rst = Nothing:    Set cnt = Nothing
+Exit Function
+
+
+errh:
+    Select Case Err.Number
+        Case Else
+            MsgBox Err.Number & Err.Description
+'            Resume
+'        End
+    End Select
+End Function
+
+Private Sub Class_Initialize()
+    cnt.Open "Provider=Microsoft.ACE.OLEDB.12.0;" & _
+                "Data Source=" & fFullName & ";" & _
+                    "Extended Properties=""Excel 8.0;HDR=Yes;"";" '如今 要用「Microsoft.ACE.OLEDB.12.0」取代「Microsoft.Jet.OLEDB.4.0」才能取得完整的記錄錄集（recordset）
+
+End Sub
