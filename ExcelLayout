@@ -1,0 +1,52 @@
+VERSION 1.0 CLASS
+BEGIN
+  MultiUse = -1  'True
+END
+Attribute VB_Name = "ExcelLayout"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = False
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+Dim i As Byte
+Dim xlApp As Excel.Application, xlBook As Excel.Workbook, xlSheet As Excel.Worksheet, xlsp As String
+
+Private Sub Class_Initialize()
+    Set xlApp = CreateObject("Excel.Application")
+    Set xlBook = xlApp.Workbooks.Add
+    Set xlSheet = xlBook.Worksheets(1)
+
+End Sub
+Function FieldNameRow_FreezeWindow(rst As ADODB.Recordset)
+Dim f As ADODB.Field
+'   已初始化,見：Private Sub Class_Initialize()
+    i = 0
+    For Each f In rst.Fields '設定欄名
+        i = i + 1
+        xlSheet.Cells(1, i) = f.Name
+'        xlSheet.Cells(1, i).Select
+        'With Range(Cells(1, 1), Cells(1, i)).Interior '設定欄名格式
+        With xlSheet.Cells(1, i).Interior
+            .Pattern = xlSolid
+            .PatternColorIndex = xlAutomatic
+            .Color = 35535
+            .TintAndShade = 0
+            .PatternTintAndShade = 0
+        End With
+    Next
+'    Range(Cells(1, 1), Cells(1, i)).Select
+        
+    xlSheet.Range("A2").CopyFromRecordset rst
+    xlSheet.Cells.EntireColumn.AutoFit '最適欄寬
+    xlSheet.Application.Visible = True
+    xlSheet.Application.UserControl = True
+    xlsp = GetDeskDir & "\"
+    xlsp = xlsp & CurrentProject.Name & VBA.Replace(VBA.Replace(VBA.Replace(VBA.Date & VBA.Time, ":", ""), "/", ""), " ", "") & ".xlsx"
+    xlSheet.SaveAs xlsp
+    xlSheet.Activate: xlBook.Activate
+    xlSheet.Range("A2").Select
+    xlApp.ActiveWindow.FreezePanes = True '凍結窗格（欄名）
+    Set xlSheet = Nothing:    Set xlBook = Nothing: Set xlApp = Nothing
+End Function
+
